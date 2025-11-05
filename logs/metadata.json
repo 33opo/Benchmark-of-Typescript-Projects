@@ -1,0 +1,10 @@
+{
+    "n8n-io/n8n": {
+        "commit_sha": "74a0b51c4636b1760a10c5cb83bebbfdbcb8fca7",
+        "commit_date": "2025-11-05T18:57:00Z"
+    },
+    "ant-design/ant-design": {
+        "commit_sha": "847192271061046ca0910b6350c6873435de4526",
+        "commit_date": "2025-11-05T05:12:06Z"
+    }
+}

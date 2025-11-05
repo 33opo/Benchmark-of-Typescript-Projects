@@ -13,7 +13,7 @@ GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 HEADERS = {"Authorization": f"token {GITHUB_TOKEN}"} if GITHUB_TOKEN else {}
 BASE_DIR = "projects"
 LOG_FILE = "skipped_projects.log"
-METADATA_FILE = "metadata.json"
+METADATA_FILE = "./logs/metadata.json"
 REPOS_FILE = "repos.txt"
 
 # === HELPER FUNCTIONS ===
