@@ -18,8 +18,62 @@ BASE_DIR = PROJECT_ROOT / "projects"
 LOG_FILE = PROJECT_ROOT / "skipped_projects.log"
 METADATA_FILE = PROJECT_ROOT / "logs" / "metadata.json"
 REPOS_FILE = PROJECT_ROOT / "repos.txt"
+EXCLUDE_DIRS = {".git", "node_modules", "dist", "build", ".next", "out", "coverage", ".venv", "venv"}
+EXCLUDE_FILE_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".pdf", ".svg", ".ico", ".zip", ".gz", ".rar", ".7z"}
+TS_EXTS = {".ts", ".tsx"}
+JS_EXTS = {".js", ".jsx"}
+OTHER_CODE_EXTS = {
+    ".py",".java",".go",".rs",".c",".cc",".cpp",".h",".hh",".hpp",
+    ".cs",".kt",".swift",".rb",".php",".m",".mm",".scala",".lua",
+    ".dart",".sh",".bash",".zsh",".ps1",".r",".pl",".sql",".vue"
+}
+MAX_FILE_BYTES = 10 * 1024 * 1024 # 10 MB
 
 # === HELPER FUNCTIONS ===
+
+def count_loc_by_language(repo_dir):
+    """Count lines of code by language in the given repository directory."""
+    repo_dir = Path(repo_dir)
+    totals = {"typescript": 0, "javascript": 0, "other": 0}
+
+    for root, dirs, files in os.walk(repo_dir):
+        # get all directories except for the big ones we want to skip
+        dirs[:] = [directory for directory in dirs if directory not in EXCLUDE_DIRS]
+
+        for filename in files:
+            p = Path(root) / filename
+            type = p.suffix.lower()
+
+            # skip obvious non-code or huge files
+            if type in EXCLUDE_FILE_EXTS:
+                continue
+            try:
+                # skip files that go over our size limit
+                if p.stat().st_size > MAX_FILE_BYTES:
+                    continue
+            except Exception:
+                continue
+
+            # check what type of code file it is
+            if type in TS_EXTS or filename.lower().endswith(".d.ts"):
+                codeType = "typescript"
+            elif type in JS_EXTS:
+                codeType = "javascript"
+            elif type in OTHER_CODE_EXTS:
+                codeType = "other"
+            else:
+                continue
+
+            # count all the actual code lines in the file
+            try:
+                with open(p, "r", errors="ignore") as fh:
+                    n = sum(1 for line in fh if line.strip())
+                totals[codeType] += n
+            except Exception:
+                continue
+
+    totals["total"] = totals["typescript"] + totals["javascript"] + totals["other"]
+    return totals
 
 def load_repos(file_path):
     """Load repository names from a text file."""
@@ -110,9 +164,15 @@ if __name__ == "__main__":
             commit_info = get_recent_commit(repo)
             if commit_info:
                 clone_or_update_repo(repo, commit_info["sha"])
+
+                owner, name = repo.split("/")
+                repo_dir = os.path.join(BASE_DIR, name)
+                loc = count_loc_by_language(repo_dir)
+
                 metadata[repo] = {
                     "commit_sha": commit_info["sha"],
-                    "commit_date": commit_info["date"]
+                    "commit_date": commit_info["date"],
+                    "loc": loc
                 }
             else:
                 log_skipped(repo, "No recent commit within the last year or API error")
