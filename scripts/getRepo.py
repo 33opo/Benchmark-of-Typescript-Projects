@@ -4,17 +4,20 @@ import requests
 from datetime import datetime, timedelta
 from git import Repo
 from dotenv import load_dotenv
+from pathlib import Path
 
 # Load environment variables from .env file (safe, ignored by git)
 load_dotenv()
+SCRIPT_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = SCRIPT_DIR.parent
 
 # === CONFIG ===
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 HEADERS = {"Authorization": f"token {GITHUB_TOKEN}"} if GITHUB_TOKEN else {}
-BASE_DIR = "projects"
-LOG_FILE = "skipped_projects.log"
-METADATA_FILE = "./logs/metadata.json"
-REPOS_FILE = "repos.txt"
+BASE_DIR = PROJECT_ROOT / "projects"
+LOG_FILE = PROJECT_ROOT / "skipped_projects.log"
+METADATA_FILE = PROJECT_ROOT / "logs" / "metadata.json"
+REPOS_FILE = PROJECT_ROOT / "repos.txt"
 
 # === HELPER FUNCTIONS ===
 
