@@ -1,17 +1,17 @@
 {
     "n8n-io/n8n": {
-        "commit_sha": "74a0b51c4636b1760a10c5cb83bebbfdbcb8fca7",
-        "commit_date": "2025-11-05T18:57:00Z",
+        "commit_sha": "c1007367458f1b0554c4f2b00f6fd907ef23d000",
+        "commit_date": "2025-11-06T15:41:22Z",
         "loc": {
-            "typescript": 1349139,
+            "typescript": 1353109,
             "javascript": 798,
-            "other": 119325,
-            "total": 1469262
+            "other": 120039,
+            "total": 1473946
         }
     },
     "ant-design/ant-design": {
-        "commit_sha": "847192271061046ca0910b6350c6873435de4526",
-        "commit_date": "2025-11-05T05:12:06Z",
+        "commit_sha": "2f6846d2a5119fa69233bccb3c2bc96cc6efd9f4",
+        "commit_date": "2025-11-06T02:21:35Z",
         "loc": {
             "typescript": 198197,
             "javascript": 767,

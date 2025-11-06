@@ -1,4 +1,9 @@
 {
+  "name": "benchmark-of-typescript-projects",
+  "version": "1.0.0",
+  "scripts": {
+    "bench:tsc": "node scripts/bench.js"
+  },
   "dependencies": {
     "cloc": "^2.6.0-cloc"
   }
