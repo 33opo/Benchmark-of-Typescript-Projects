@@ -5,9 +5,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git time python3 python3-pip ca-certificates openssh-client \
  && rm -rf /var/lib/apt/lists/*
 
-RUN npm install -g pnpm@10.18.3
-# optional noise reducers:
-RUN npm config set fund false && npm config set audit false
+# use corepack to pin package managers
+RUN corepack enable \
+ && corepack prepare pnpm@9.12.0 --activate \
+ && corepack prepare yarn@4.5.1 --activate
 
 # install python dependencies
 RUN python3 -m pip install --no-cache-dir requests

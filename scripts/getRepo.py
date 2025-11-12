@@ -73,35 +73,47 @@ def count_loc_by_language(repo_dir):
     return totals
 
 def sh(*args, cwd=None):
+    """wrapper for subprocess.check_call."""
     subprocess.check_call(list(args), cwd=cwd)
 
 def clone_or_checkout(repo_full: str, sha: str):
+    """Ensure a working tree exists at projects/<name> and is checked out to `sha`."""
     owner, name = repo_full.split("/")
     dest = BASE_DIR / name
     BASE_DIR.mkdir(parents=True, exist_ok=True)
+
+    # clone if the folder of the project does not exist
     if not dest.exists():
-        # blobless clone keeps disk usage lower
-        sh("git", "clone", "--filter=blob:none", f"https://github.com/{repo_full}.git", str(dest))
-    # ensure we can checkout the SHA
+      sh("git", "clone", "--filter=blob:none", f"https://github.com/{repo_full}.git", str(dest))
+
+    # Make sure we have up-to-date references, then checkout the exact commit.
     sh("git", "fetch", "--all", "--tags", "--prune", cwd=dest)
     sh("git", "checkout", "-q", sha, cwd=dest)
 
 def main():
+    # creates directory if not exists, need CORPUS file to run this script
     LOGS_DIR.mkdir(parents=True, exist_ok=True)
     if not CORPUS.exists():
         raise SystemExit(f"Missing corpus file: {CORPUS}. Run freeze_corpus.py first.")
 
     metadata = {}
+
     with open(CORPUS) as f:
         for line in f:
+            # go through CORPUS file and get info
             row = json.loads(line)
             repo = row["repo"]
             sha = row["commit_sha"]
-            print(f"[hydrate] {repo} @ {sha[:7]}")
+            print(f"[checkout] {repo} @ {sha[:7]}")
+
             try:
                 clone_or_checkout(repo, sha)
+
+                # compute LOC
                 repo_dir = BASE_DIR / repo.split("/")[1]
                 loc = count_loc_by_language(repo_dir)
+
+                # use CORPUS + LOC to create metadata
                 metadata[repo] = {
                     "commit_sha": sha,
                     "commit_date": row.get("commit_date"),
@@ -114,6 +126,7 @@ def main():
             except Exception as e:
                 print(f"[WARN] error for {repo}: {type(e).__name__}: {e}")
 
+    # write the metadata file
     with open(METADATA_FILE, "w") as out:
         json.dump(metadata, out, indent=2)
     print(f"[ok] wrote {METADATA_FILE}")
