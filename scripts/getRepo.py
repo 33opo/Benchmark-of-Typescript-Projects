@@ -1,13 +1,8 @@
 import os
 import json
-import requests
-from datetime import datetime, timedelta
-from git import Repo
-from dotenv import load_dotenv
+import subprocess
 from pathlib import Path
 
-# Load environment variables from .env file (safe, ignored by git)
-load_dotenv()
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parent
 
@@ -16,6 +11,8 @@ GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 HEADERS = {"Authorization": f"token {GITHUB_TOKEN}"} if GITHUB_TOKEN else {}
 BASE_DIR = PROJECT_ROOT / "projects"
 LOG_FILE = PROJECT_ROOT / "skipped_projects.log"
+CORPUS = PROJECT_ROOT / "logs" / "corpus.jsonl"
+LOGS_DIR = PROJECT_ROOT / "logs"
 METADATA_FILE = PROJECT_ROOT / "logs" / "metadata.json"
 REPOS_FILE = PROJECT_ROOT / "repos.txt"
 EXCLUDE_DIRS = {".git", "node_modules", "dist", "build", ".next", "out", "coverage", ".venv", "venv"}
@@ -75,110 +72,64 @@ def count_loc_by_language(repo_dir):
     totals["total"] = totals["typescript"] + totals["javascript"] + totals["other"]
     return totals
 
-def load_repos(file_path):
-    """Load repository names from a text file."""
-    if not os.path.exists(file_path):
-        print(f"[ERROR] Repos file '{file_path}' does not exist.")
-        return []
-    with open(file_path, "r") as f:
-        repos = [line.strip() for line in f if line.strip()]
-    return repos
+def sh(*args, cwd=None):
+    """wrapper for subprocess.check_call."""
+    subprocess.check_call(list(args), cwd=cwd)
 
+def clone_or_checkout(repo_full: str, sha: str):
+    """Ensure a working tree exists at projects/<name> and is checked out to `sha`."""
+    owner, name = repo_full.split("/")
+    dest = BASE_DIR / name
+    BASE_DIR.mkdir(parents=True, exist_ok=True)
 
-def get_recent_commit(repo_name):
-    """Return the SHA and date of the latest commit within the last year."""
-    last_year = datetime.now() - timedelta(days=365)
-    url = f"https://api.github.com/repos/{repo_name}/commits"
-    params = {"since": last_year.isoformat(), "per_page": 1}
-    response = requests.get(url, headers=HEADERS, params=params)
+    # clone if the folder of the project does not exist
+    if not dest.exists():
+      sh("git", "clone", "--filter=blob:none", f"https://github.com/{repo_full}.git", str(dest))
 
-    if response.status_code == 401:
-        print(f"[ERROR] Unauthorized (401) — missing or invalid GitHub token.")
-        print("→ Make sure your .env file has GITHUB_TOKEN=your_token_here")
-        return None
+    # Make sure we have up-to-date references, then checkout the exact commit.
+    sh("git", "fetch", "--all", "--tags", "--prune", cwd=dest)
+    sh("git", "checkout", "-q", sha, cwd=dest)
 
-    if response.status_code != 200:
-        print(f"[ERROR] Failed to fetch commits for {repo_name}: {response.status_code}")
-        return None
-
-    commits = response.json()
-    if not commits:
-        print(f"[SKIP] No commits in the last year for {repo_name}")
-        return None
-
-    latest_commit = commits[0]
-    lc_sha = latest_commit["sha"]
-    lc_date = latest_commit["commit"]["author"]["date"]
-    print(f"[INFO] Latest commit for {repo_name}: {lc_sha} ({lc_date})")
-    return {"sha": lc_sha, "date": lc_date}
-
-
-def clone_or_update_repo(repo_name, commit_sha):
-    """Clone the repo if missing, otherwise fetch and checkout the given commit."""
-    owner, name = repo_name.split("/")
-    repo_dir = os.path.join(BASE_DIR, name)
-    repo_url = f"https://github.com/{repo_name}.git"
-
-    # Clone if repo doesn't exist
-    if not os.path.exists(repo_dir):
-        print(f"[CLONE] Cloning {repo_name}...")
-        Repo.clone_from(repo_url, repo_dir)
-
-    # Fetch and checkout
-    repo = Repo(repo_dir)
-    print(f"[CHECKOUT] Checking out commit {commit_sha} for {repo_name}...")
-    repo.git.fetch()
-    repo.git.checkout(commit_sha)
-
-
-def log_skipped(repo_name, reason):
-    """Log skipped repositories."""
-    with open(LOG_FILE, "a") as f:
-        f.write(f"{repo_name}: {reason}\n")
-
-
-def save_metadata(metadata):
-    """Save metadata to a JSON file."""
-    with open(METADATA_FILE, "w") as f:
-        json.dump(metadata, f, indent=4)
-
-
-# === MAIN EXECUTION ===
-if __name__ == "__main__":
-    # Clean previous logs
-    if os.path.exists(LOG_FILE):
-        os.remove(LOG_FILE)
-    if os.path.exists(METADATA_FILE):
-        os.remove(METADATA_FILE)
-
-    # Load repositories
-    repos = load_repos(REPOS_FILE)
-    if not repos:
-        print("[ERROR] No repositories to process. Exiting.")
-        exit(1)
+def main():
+    # creates directory if not exists, need CORPUS file to run this script
+    LOGS_DIR.mkdir(parents=True, exist_ok=True)
+    if not CORPUS.exists():
+        raise SystemExit(f"Missing corpus file: {CORPUS}. Run freeze_corpus.py first.")
 
     metadata = {}
 
-    for repo in repos:
-        try:
-            commit_info = get_recent_commit(repo)
-            if commit_info:
-                clone_or_update_repo(repo, commit_info["sha"])
+    with open(CORPUS) as f:
+        for line in f:
+            # go through CORPUS file and get info
+            row = json.loads(line)
+            repo = row["repo"]
+            sha = row["commit_sha"]
+            print(f"[checkout] {repo} @ {sha[:7]}")
 
-                owner, name = repo.split("/")
-                repo_dir = os.path.join(BASE_DIR, name)
+            try:
+                clone_or_checkout(repo, sha)
+
+                # compute LOC
+                repo_dir = BASE_DIR / repo.split("/")[1]
                 loc = count_loc_by_language(repo_dir)
 
+                # use CORPUS + LOC to create metadata
                 metadata[repo] = {
-                    "commit_sha": commit_info["sha"],
-                    "commit_date": commit_info["date"],
-                    "loc": loc
+                    "commit_sha": sha,
+                    "commit_date": row.get("commit_date"),
+                    "license_spdx": row.get("license_spdx"),
+                    "curation": row.get("curation"),
+                    "loc": loc,
                 }
-            else:
-                log_skipped(repo, "No recent commit within the last year or API error")
-        except Exception as e:
-            print(f"[ERROR] Exception processing {repo}: {e}")
-            log_skipped(repo, str(e))
+            except subprocess.CalledProcessError as e:
+                print(f"[WARN] git failed for {repo}: {e}")
+            except Exception as e:
+                print(f"[WARN] error for {repo}: {type(e).__name__}: {e}")
 
-    save_metadata(metadata)
-    print(f"\n[INFO] Metadata saved to {METADATA_FILE}")
+    # write the metadata file
+    with open(METADATA_FILE, "w") as out:
+        json.dump(metadata, out, indent=2)
+    print(f"[ok] wrote {METADATA_FILE}")
+
+if __name__ == "__main__":
+    main()

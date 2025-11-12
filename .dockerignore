@@ -1,0 +1,10 @@
+.git
+.DS_Store
+.vscode
+.venv
+node_modules
+projects
+logs
+runs
+*.log
+*.tsbuildinfo
