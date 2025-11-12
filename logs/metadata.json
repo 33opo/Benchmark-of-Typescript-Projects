@@ -1,22 +1,40 @@
 {
-    "n8n-io/n8n": {
-        "commit_sha": "c1007367458f1b0554c4f2b00f6fd907ef23d000",
-        "commit_date": "2025-11-06T15:41:22Z",
-        "loc": {
-            "typescript": 1353109,
-            "javascript": 798,
-            "other": 120039,
-            "total": 1473946
-        }
+  "n8n-io/n8n": {
+    "commit_sha": "9844326ecdea39778c191c147d0d10e07ccc8c0c",
+    "commit_date": "2025-11-11T22:16:39Z",
+    "license_spdx": "NOASSERTION",
+    "curation": {
+      "kind": "app",
+      "tests": true,
+      "monorepo": false,
+      "notes": [
+        "tests"
+      ]
     },
-    "ant-design/ant-design": {
-        "commit_sha": "2f6846d2a5119fa69233bccb3c2bc96cc6efd9f4",
-        "commit_date": "2025-11-06T02:21:35Z",
-        "loc": {
-            "typescript": 198197,
-            "javascript": 767,
-            "other": 117,
-            "total": 199081
-        }
+    "loc": {
+      "typescript": 1357724,
+      "javascript": 798,
+      "other": 121337,
+      "total": 1479859
     }
+  },
+  "ant-design/ant-design": {
+    "commit_sha": "2f0474bfd96577e3a4aadf6f8e280b1c5f641b60",
+    "commit_date": "2025-11-11T03:13:39Z",
+    "license_spdx": "MIT",
+    "curation": {
+      "kind": "library",
+      "tests": true,
+      "monorepo": false,
+      "notes": [
+        "tests"
+      ]
+    },
+    "loc": {
+      "typescript": 198231,
+      "javascript": 767,
+      "other": 117,
+      "total": 199115
+    }
+  }
 }
