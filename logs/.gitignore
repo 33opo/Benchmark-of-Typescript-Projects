@@ -1,0 +1,4 @@
+# don't commit any logs, Ignore everything in this directory
+*
+# Except this file (so the folder stays in git)
+!.gitignore
