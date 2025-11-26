@@ -28,7 +28,7 @@
 - outputs the logs and the overall summary in /logs
 
 # Get Docker Image Running
-1. open -a "Docker" 
+1. open -a "Docker" or just open docker manually
 
 2. docker build -t tsbench:dev .
 
